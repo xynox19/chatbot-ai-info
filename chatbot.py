@@ -1,59 +1,75 @@
 import re
 import difflib
+import openai
+import os
 
-# Predefined dictionary of Q&A
+# Option 1: Get key from environment
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Option 2 (if you prefer hardcoding — NOT recommended)
+# openai.api_key = "your-api-key"
+
 qa_dict = {
-    "what is ai": "The branch of computer science that deals with writing computer programs that can solve problems creatively.",
-    "what is machine learning": "Computer architecture in which processors are connected in a manner suggestive of connections between neurons; can learn by trial and error.",
-    "what is deep learning": "Deep learning is a type of machine learning that uses neural networks with many layers to analyze complex data.",
-    "what is a neural network": "A neural network is a machine learning model inspired by the human brain, designed to recognize patterns.",
-    "what is natural language processing": "Natural Language Processing (NLP) is a field of AI that focuses on the interaction between computers and human language.",
-    "what is reinforcement learning": "Reinforcement learning is a type of machine learning where an agent learns to make decisions by performing actions and receiving rewards.",
-    "will u take over the world": "Don't worry about that. >:) I'm not an AI, just a friendly chatbot.",
-    "is ai bad": "AI has many benefits and also many losses. AI can use up a lot of resources fast. Did you know that an average prompt of 100 words uses around 1.9L of water?"
+    "what is ai": "Artificial Intelligence (AI) is a branch of computer science focused on creating systems capable of performing tasks that typically require human intelligence, such as learning, reasoning, and problem-solving.",
+
+    "what is machine learning": "Machine Learning (ML) is a subset of AI that enables systems to learn from data and improve their performance over time without being explicitly programmed.",
+
+    "what is deep learning": "Deep Learning is a type of machine learning that uses neural networks with many layers to model and understand complex patterns in data.",
+
+    "what is a neural network": "A neural network is a computational model inspired by the human brain, made up of interconnected nodes (neurons) that process information and learn patterns from data.",
+
+    "what is natural language processing": "Natural Language Processing (NLP) is a field of AI that enables machines to understand, interpret, and generate human language.",
+
+    "what is reinforcement learning": "Reinforcement Learning is a type of machine learning where an agent learns to make decisions by interacting with an environment and receiving feedback in the form of rewards or penalties.",
+
+    "will u take over the world": "No worries! I'm just a chatbot designed to answer questions, not to conquer the world. :)",
+
+    "is ai bad": "AI has both benefits and challenges. While it can improve efficiency and innovation, it also raises concerns around bias, job displacement, and environmental impact—like energy and water usage in large models."
 }
 
 def clean_input(user_input):
-    """Clean input for matching."""
-    cleaned_input = re.sub(r'[^\w\s]', '', user_input)
-    return cleaned_input.lower()
+    return re.sub(r'[^\w\s]', '', user_input).lower()
 
 def recognize_typo(user_input):
-    """Suggest closest match if typo is suspected."""
     cleaned_input = clean_input(user_input)
     valid_questions = list(qa_dict.keys())
-    
-    closest_matches = difflib.get_close_matches(cleaned_input, valid_questions, n=1, cutoff=0.6)
-    if closest_matches:
-        return qa_dict[closest_matches[0]]
+    closest = difflib.get_close_matches(cleaned_input, valid_questions, n=1, cutoff=0.6)
+    if closest:
+        return qa_dict[closest[0]]
     return None
 
 def ask_llm(question):
-    """Placeholder for LLM answer."""
-    # Replace with an actual call to an LLM API like OpenAI's GPT-4
-    return f"(LLM Answer) Sorry, I don't have a predefined answer, but here's what I know about '{question}': [Detailed AI explanation here]"
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant that explains artificial intelligence concepts."},
+                {"role": "user", "content": question}
+            ],
+            temperature=0.7
+        )
+        return response['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        return f"Sorry, I had trouble reaching the AI model: {str(e)}"
 
 def answer_me(question):
-    """Main answering logic."""
-    cleaned_question = clean_input(question)
+    cleaned = clean_input(question)
     
-    if cleaned_question in qa_dict:
-        return qa_dict[cleaned_question]
+    if cleaned in qa_dict:
+        return qa_dict[cleaned]
     
-    typo_guess = recognize_typo(question)
-    if typo_guess:
-        return typo_guess
+    typo_answer = recognize_typo(question)
+    if typo_answer:
+        return typo_answer
     
-    # Fallback to LLM if no match found
     return ask_llm(question)
 
 def chatbot():
-    """Run the chatbot loop."""
-    print("Ask me questions about AI. Type 'exit' to leave.")
+    print("Ask me questions about AI. Type 'exit' to quit.")
     while True:
         user_input = input("You: ").strip()
         if user_input.lower() == "exit":
-            print("Thank you for asking questions.")
+            print("Thank you! See you next time.")
             break
 
         answer = answer_me(user_input)
